@@ -700,7 +700,11 @@ it will be removed
 
 We propose:
 
-- Add `targets` section to the `builder.toml` schema, this will keep consistency for end-users to understand how to define multi-architecture. The new schema will be
+- Add `targets` section to the `builder.toml` schema, this will keep consistency for end-users to understand how to 
+define multi-architecture. Adding more than one target to the `builder.toml` will be considered by `pack` as an 
+acknowledgement of the desired to generate multi-arch [Builders](https://buildpacks.io/docs/concepts/components/builder/).  
+
+The new schema will be
 similar to:
 ```toml
 # Buildpacks to include in builder, 
@@ -728,9 +732,8 @@ variant = "<architecture variant>"
 name = "<distribution ID>"
 versions = ["<distribution version>"]
 ```
-- Add a new `--target` optional flag with format `[os][/arch][/variant]:[name@version]` to create a builder for a particular target, this will help end-users to specify the platform for which they want to create single OCI artifact.
-- Add a new boolean `--multi-arch` flag to indicate pack it must create multiples OCI artifacts and combine them with an [image index](https://github.com/opencontainers/image-spec/blob/master/image-index.md),
-  this flag must be used in conjunction with `--publish` or `--format file` flags and error out when `daemon` is selected.
+- Add a new `--target` optional flag with format `[os][/arch][/variant]:[name@version]` to create a builder for a 
+particular target, this will help end-users to specify the platform for which they want to create single OCI artifact.
 
 ### Examples
 
@@ -738,8 +741,9 @@ Let's use some examples to explain the expected behavior in different use cases
 
 #### `Targets` are not present in `builder.toml`
 
-This is probably the case for most of the Buildpack Authors, for example [Paketo](https://github.com/paketo-buildpacks/builder-jammy-tiny/blob/main/builder.toml), lets suppose a 
-`buildpack.toml` like:
+This is probably the case for most of the Buildpack Authors, for example 
+[Paketo](https://github.com/paketo-buildpacks/builder-jammy-tiny/blob/main/builder.toml), lets suppose a`buildpack.toml` 
+like:
 
 ```toml
 # Buildpacks to include in builder
@@ -790,7 +794,7 @@ Successfully created builder image <builder>
 Tip: Run pack build <image-name> --builder <builder> to use this builder
 ```
 
-Pulling operations will be configured to use `linux/arm64` as target platform, 
+**Output**: Pulling operations will be configured to use `linux/arm64` as target platform, 
 the OCI Image [configuration](https://github.com/opencontainers/image-spec/blob/main/config.md#properties) file will have:
 
 ```json
@@ -802,18 +806,10 @@ the OCI Image [configuration](https://github.com/opencontainers/image-spec/blob/
 
 What about multi-architecture builders?
 
-```bash
-pack builder create <builder> --config ./builder.toml --multi-arch --publish 
-Error: 'targets' must be defined when creating a multi-architecture builder
-```
-
-In this case, pack doesn't have enough information to create a multi-arch builder and fail its execution. 
-
 Using `target` flag:
 
 ```bash
 pack builder create <builder> --config ./builder.toml  \ 
-           --multi-arch \ 
            --target linux/amd64 \ 
            --target linux/arm64 \ 
            --publish 
@@ -821,9 +817,9 @@ Successfully created builder image <builder>
 Tip: Run pack build <image-name> --builder <builder> to use this builder
 ```
 
-In this case, two OCI images will be created and pushed into the registry, for each image the configuration file will be
-created with the correct target: `os` and `architecture`,
-an [image index](https://github.com/opencontainers/image-spec/blob/master/image-index.md) will be created to combine them
+**Output**: two OCI images will be created and pushed into the registry, for each image the configuration file will be
+created with the correct target: `os` and `architecture`, an 
+[image index](https://github.com/opencontainers/image-spec/blob/master/image-index.md) will be created to combine them
 
 #### `Targets` are present in `builder.toml`
 
@@ -855,7 +851,7 @@ os = "linux"
 arch = "arm64"
 ```
 
-Let's suppose we execute the command in a host "linux/amd64" machine
+Let's suppose we execute the command against a daemon running in a `linux/amd64` machine
 
 ```bash
 pack builder create <builder> --config ./builder.toml 
@@ -864,14 +860,18 @@ Successfully created builder image <builder>
 Tip: Run pack build <image-name> --builder <builder> to use this builder
 ```
 
-`target` flag is not defined, we keep our current behavior and detect the host `os` and `architecture`. Because a 
-`target` matches the host `platform` it is used to create the builder.
+**Output**: We keep our current behavior and detect the `os` and `architecture` from the daemon. Because there is `target` 
+that matches the daemon `os/arch` the builder is being built.
 
-Trying to use the new flags:
+Using `--target` flag against the daemon with a different platform
 
+TODO check if this is possible!
+
+<!--  
 ```bash
 pack builder create <builder> --config ./builder.toml --target linux/arm64
-Info: creating a builder for target "linux/arm64" 
+Info: creating a builder for target "linux/arm64"
+Warning: 
 Successfully created builder image <builder>
 Tip: Run pack build <image-name> --builder <builder> to use this builder
 ```
@@ -885,22 +885,21 @@ the OCI Image [configuration](https://github.com/opencontainers/image-spec/blob/
   "os": "linux"
 }
 ```
+--> 
 
 What about multi-architecture builders?
 
 ```bash
-pack builder create <builder> --config ./builder.toml --multi-arch --publish 
+pack builder create <builder> --config ./builder.toml --publish 
 Info: A multi-arch builder will be created for targets platform: 'linux/amd64', 'linux/arm64'
 Successfully created builder image <builder>
 Tip: Run pack build <image-name> --builder <builder> to use this builder
 ```
 
-
 Using `target` flag:
 
 ```bash
 pack builder create <builder> --config ./builder.toml  \ 
-           --multi-arch \ 
            --target linux/amd64 \ 
            --target linux/arm64 \ 
            --publish
@@ -909,7 +908,7 @@ Successfully created builder image <builder>
 Tip: Run pack build <image-name> --builder <builder> to use this builder
 ```
 
-In this case, two OCI images will be created and pushed into the registry, for each image the configuration file will be
+**Output** In both cases, two OCI images will be created and pushed into the registry, for each image the configuration file will be
 created with the correct target platform: `os` and `architecture`,
 an [image index](https://github.com/opencontainers/image-spec/blob/master/image-index.md) will be created to combine them
 
